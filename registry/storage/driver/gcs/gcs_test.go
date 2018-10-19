@@ -1,10 +1,12 @@
 package gcs
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"testing"
 
+	dcontext "github.com/docker/distribution/context"
 	"fmt"
 
 	ctx "github.com/docker/distribution/context"
@@ -48,7 +50,7 @@ func init() {
 	var email string
 	var privateKey []byte
 
-	ts, err = google.DefaultTokenSource(ctx.Background(), storage.ScopeFullControl)
+	ts, err = google.DefaultTokenSource(dcontext.Background(), storage.ScopeFullControl)
 	if err != nil {
 		// Assume that the file contents are within the environment variable since it exists
 		// but does not contain a valid file path
@@ -64,7 +66,7 @@ func init() {
 		if email == "" {
 			panic("Error reading JWT config : missing client_email property")
 		}
-		ts = jwtConfig.TokenSource(ctx.Background())
+		ts = jwtConfig.TokenSource(dcontext.Background())
 	}
 
 	gcsDriverConstructor = func(rootDirectory string) (storagedriver.StorageDriver, error) {
@@ -73,7 +75,7 @@ func init() {
 			rootDirectory: root,
 			email:         email,
 			privateKey:    privateKey,
-			client:        oauth2.NewClient(ctx.Background(), ts),
+			client:        oauth2.NewClient(dcontext.Background(), ts),
 			chunkSize:     defaultChunkSize,
 		}
 
@@ -103,7 +105,7 @@ func TestCommitEmpty(t *testing.T) {
 	}
 
 	filename := "/test"
-	ctx := ctx.Background()
+	ctx := dcontext.Background()
 
 	writer, err := driver.Writer(ctx, filename, false)
 	defer driver.Delete(ctx, filename)
@@ -149,7 +151,7 @@ func TestCommit(t *testing.T) {
 	}
 
 	filename := "/test"
-	ctx := ctx.Background()
+	ctx := dcontext.Background()
 
 	contents := make([]byte, defaultChunkSize)
 	writer, err := driver.Writer(ctx, filename, false)
@@ -246,7 +248,7 @@ func TestEmptyRootList(t *testing.T) {
 
 	filename := "/test"
 	contents := []byte("contents")
-	ctx := ctx.Background()
+	ctx := dcontext.Background()
 	err = rootedDriver.PutContent(ctx, filename, contents)
 	if err != nil {
 		t.Fatalf("unexpected error creating content: %v", err)
@@ -289,7 +291,7 @@ func TestMoveDirectory(t *testing.T) {
 		t.Fatalf("unexpected error creating rooted driver: %v", err)
 	}
 
-	ctx := ctx.Background()
+	ctx := dcontext.Background()
 	contents := []byte("contents")
 	// Create a regular file.
 	err = driver.PutContent(ctx, "/parent/dir/foo", contents)
