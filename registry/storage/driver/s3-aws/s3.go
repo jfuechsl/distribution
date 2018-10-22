@@ -460,7 +460,7 @@ func New(params DriverParameters) (*Driver, error) {
 		setv2Handlers(s3obj)
 	}
 
-	_, err := s3obj.CreateBucket(&s3.CreateBucketInput{
+	_, err = s3obj.CreateBucket(&s3.CreateBucketInput{
 		Bucket: &params.Bucket,
 	})
 	if err != nil {

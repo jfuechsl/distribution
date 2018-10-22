@@ -6,10 +6,8 @@ import (
 	"os"
 	"testing"
 
-	dcontext "github.com/docker/distribution/context"
-	"fmt"
-
 	ctx "github.com/docker/distribution/context"
+	dcontext "github.com/docker/distribution/context"
 	storagedriver "github.com/docker/distribution/registry/storage/driver"
 	"github.com/docker/distribution/registry/storage/driver/testsuites"
 	"golang.org/x/oauth2"

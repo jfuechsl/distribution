@@ -73,7 +73,7 @@ type driverParameters struct {
 	// pushes by ensuring we aren't DoSing our own server with many
 	// connections.
 	maxConcurrency uint64
-	projectID     string
+	projectID      string
 }
 
 func init() {
@@ -212,7 +212,7 @@ func FromParameters(parameters map[string]interface{}) (storagedriver.StorageDri
 		client:         oauth2.NewClient(context.Background(), ts),
 		chunkSize:      chunkSize,
 		maxConcurrency: maxConcurrency,
-		projectID:     fmt.Sprint(key.ProjectID),
+		projectID:      fmt.Sprint(key.ProjectID),
 	}
 
 	return New(params)

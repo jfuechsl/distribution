@@ -17,7 +17,6 @@ import (
 	"github.com/docker/distribution/registry/storage/driver/testdriver"
 	"github.com/docker/distribution/testutil"
 	"github.com/opencontainers/go-digest"
-	"path"
 )
 
 // TestWriteSeek tests that the current file size can be
