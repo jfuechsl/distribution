@@ -42,9 +42,12 @@ type Error interface {
 	OrigErr() error
 }
 
-// BatchError is a batch of errors which also wraps lower level errors with code, message,
-// and original errors. Calling Error() will only return the error that is at the end
-// of the list.
+// BatchError is a batch of errors which also wraps lower level errors with
+// code, message, and original errors. Calling Error() will include all errors
+// that occurred in the batch.
+//
+// Deprecated: Replaced with BatchedErrors. Only defined for backwards
+// compatibility.
 type BatchError interface {
 	// Satisfy the generic error interface.
 	error
@@ -59,20 +62,35 @@ type BatchError interface {
 	OrigErrs() []error
 }
 
+// BatchedErrors is a batch of errors which also wraps lower level errors with
+// code, message, and original errors. Calling Error() will include all errors
+// that occurred in the batch.
+//
+// Replaces BatchError
+type BatchedErrors interface {
+	// Satisfy the base Error interface.
+	Error
+
+	// Returns the original error if one was set.  Nil is returned if not set.
+	OrigErrs() []error
+}
+
 // New returns an Error object described by the code, message, and origErr.
 //
 // If origErr satisfies the Error interface it will not be wrapped within a new
 // Error object and will instead be returned.
 func New(code, message string, origErr error) Error {
-	if e, ok := origErr.(Error); ok && e != nil {
-		return e
+	var errs []error
+	if origErr != nil {
+		errs = append(errs, origErr)
 	}
-	return newBaseError(code, message, origErr)
+	return newBaseError(code, message, errs)
 }
 
-// NewBatchError returns an baseError with an expectation of an array of errors
-func NewBatchError(code, message string, errs []error) BatchError {
-	return newBaseErrors(code, message, errs)
+// NewBatchError returns an BatchedErrors with a collection of errors as an
+// array of errors.
+func NewBatchError(code, message string, errs []error) BatchedErrors {
+	return newBaseError(code, message, errs)
 }
 
 // A RequestFailure is an interface to extract request failure information from
@@ -85,9 +103,9 @@ func NewBatchError(code, message string, errs []error) BatchError {
 //     output, err := s3manage.Upload(svc, input, opts)
 //     if err != nil {
 //         if reqerr, ok := err.(RequestFailure); ok {
-//             log.Printf("Request failed", reqerr.Code(), reqerr.Message(), reqerr.RequestID())
+//             log.Println("Request failed", reqerr.Code(), reqerr.Message(), reqerr.RequestID())
 //         } else {
-//             log.Printf("Error:", err.Error()
+//             log.Println("Error:", err.Error())
 //         }
 //     }
 //
@@ -120,8 +138,27 @@ type RequestFailure interface {
 	RequestID() string
 }
 
-// NewRequestFailure returns a new request error wrapper for the given Error
-// provided.
+// NewRequestFailure returns a wrapped error with additional information for
+// request status code, and service requestID.
+//
+// Should be used to wrap all request which involve service requests. Even if
+// the request failed without a service response, but had an HTTP status code
+// that may be meaningful.
 func NewRequestFailure(err Error, statusCode int, reqID string) RequestFailure {
 	return newRequestError(err, statusCode, reqID)
+}
+
+// UnmarshalError provides the interface for the SDK failing to unmarshal data.
+type UnmarshalError interface {
+	awsError
+	Bytes() []byte
+}
+
+// NewUnmarshalError returns an initialized UnmarshalError error wrapper adding
+// the bytes that fail to unmarshal to the error.
+func NewUnmarshalError(err error, msg string, bytes []byte) UnmarshalError {
+	return &unmarshalError{
+		awsError: New("UnmarshalError", msg, err),
+		bytes:    bytes,
+	}
 }
