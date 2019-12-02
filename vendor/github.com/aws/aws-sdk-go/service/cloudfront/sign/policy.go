@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"strings"
 	"time"
+	"unicode"
 )
 
 // An AWSEpochTime wraps a time value providing JSON serialization needed for
@@ -29,6 +30,19 @@ func NewAWSEpochTime(t time.Time) *AWSEpochTime {
 // MarshalJSON serializes the epoch time as AWS Profile epoch time.
 func (t AWSEpochTime) MarshalJSON() ([]byte, error) {
 	return []byte(fmt.Sprintf(`{"AWS:EpochTime":%d}`, t.UTC().Unix())), nil
+}
+
+// UnmarshalJSON unserializes AWS Profile epoch time.
+func (t *AWSEpochTime) UnmarshalJSON(data []byte) error {
+	var epochTime struct {
+		Sec int64 `json:"AWS:EpochTime"`
+	}
+	err := json.Unmarshal(data, &epochTime)
+	if err != nil {
+		return err
+	}
+	t.Time = time.Unix(epochTime.Sec, 0).UTC()
+	return nil
 }
 
 // An IPAddress wraps an IPAddress source IP providing JSON serialization information
@@ -110,6 +124,12 @@ func (p *Policy) Validate() error {
 		if s.Resource == "" {
 			return fmt.Errorf("statement at index %d does not have a resource", i)
 		}
+		if !isASCII(s.Resource) {
+			return fmt.Errorf("unable to sign resource, [%s]. "+
+				"Resources must only contain ascii characters. "+
+				"Hostnames with unicode should be encoded as Punycode, (e.g. golang.org/x/net/idna), "+
+				"and URL unicode path/query characters should be escaped.", s.Resource)
+		}
 	}
 
 	return nil
@@ -120,7 +140,7 @@ func (p *Policy) Validate() error {
 func CreateResource(scheme, u string) (string, error) {
 	scheme = strings.ToLower(scheme)
 
-	if scheme == "http" || scheme == "https" {
+	if scheme == "http" || scheme == "https" || scheme == "http*" || scheme == "*" {
 		return u, nil
 	}
 
@@ -162,11 +182,10 @@ func NewCannedPolicy(resource string, expires time.Time) *Policy {
 
 // encodePolicy encodes the Policy as JSON and also base 64 encodes it.
 func encodePolicy(p *Policy) (b64Policy, jsonPolicy []byte, err error) {
-	jsonPolicy, err = json.Marshal(p)
+	jsonPolicy, err = encodePolicyJSON(p)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to encode policy, %s", err.Error())
 	}
-
 	// Remove leading and trailing white space, JSON encoding will note include
 	// whitespace within the encoding.
 	jsonPolicy = bytes.TrimSpace(jsonPolicy)
@@ -207,4 +226,13 @@ func awsEscapeEncoded(b []byte) {
 			b[i] = r
 		}
 	}
+}
+
+func isASCII(u string) bool {
+	for _, c := range u {
+		if c > unicode.MaxASCII {
+			return false
+		}
+	}
+	return true
 }
