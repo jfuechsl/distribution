@@ -28,6 +28,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds"
 	"github.com/aws/aws-sdk-go/aws/ec2metadata"
+	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
@@ -70,20 +71,11 @@ type DriverParameters struct {
 }
 
 func init() {
-	for _, region := range []string{
-		"us-east-1",
-		"us-west-1",
-		"us-west-2",
-		"eu-west-1",
-		"eu-central-1",
-		"ap-southeast-1",
-		"ap-southeast-2",
-		"ap-northeast-1",
-		"ap-northeast-2",
-		"sa-east-1",
-		"cn-north-1",
-	} {
-		validRegions[region] = struct{}{}
+	partitions := endpoints.DefaultPartitions()
+	for _, p := range partitions {
+		for region := range p.Regions() {
+			validRegions[region] = struct{}{}
+		}
 	}
 
 	// Register this as the default s3 driver in addition to s3aws
